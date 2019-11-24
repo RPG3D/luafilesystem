@@ -33,4 +33,7 @@ target("lfs")
 		add_defines("ANDROID_STL=gnustl_shared")
 	end
 
+	if (is_os("ios")) then
+		set_kind("static")
+	end
 
