@@ -1,6 +1,6 @@
 
 
-target("LuaFileSystem")
+target("lfs")
 	set_kind("shared")
 
 	set_languages("c89", "cxx14")

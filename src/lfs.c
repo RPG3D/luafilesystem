@@ -74,6 +74,9 @@
 
 #include "lfs.h"
 
+#define XXH_PRIVATE_API
+#include "xxhash.h"
+
 #define LFS_VERSION "1.7.0"
 #define LFS_LIBNAME "lfs"
 
@@ -911,6 +914,43 @@ static int link_info (lua_State *L) {
 }
 
 
+static int XXHash32File(lua_State* L)
+{
+	long long HashValue = 0;
+
+	const char* FileName = lua_tostring(L, -1);
+	FILE* FileHandle = fopen(FileName, "r");
+	if (FileHandle)
+	{
+		XXH32_state_t State32;
+		XXH32_reset(&State32, 0);
+		unsigned long ProgressCount = 0;
+		
+		fseek(FileHandle, 0, SEEK_END);
+		unsigned long FileSize = ftell(FileHandle);
+		fseek(FileHandle, 0, SEEK_SET);
+
+		const unsigned long DefaultBlockSize = 64 * 1024;
+		char DataBuffer[64 * 1024] = { 0 };
+		while (ProgressCount < FileSize)
+		{
+			unsigned long BlockSize = (ProgressCount + DefaultBlockSize) <= FileSize ? DefaultBlockSize : (FileSize - ProgressCount);
+			fseek(FileHandle, ProgressCount, SEEK_SET);
+			fread(DataBuffer, BlockSize, 1, FileHandle);
+			XXH32_update(&State32, (void*)DataBuffer, BlockSize);
+			ProgressCount += BlockSize;
+		}
+		//release file handle
+		fclose(FileHandle);
+		FileHandle = 0;
+
+		HashValue = XXH32_digest(&State32);
+	}
+
+	lua_pushinteger(L, HashValue);
+	return 1;
+}
+
 /*
 ** Assumes the table is on top of the stack.
 */
@@ -938,6 +978,7 @@ static const struct luaL_Reg fslib[] = {
         {"touch", file_utime},
         {"unlock", file_unlock},
         {"lock_dir", lfs_lock_dir},
+		{"XXHash32File", XXHash32File},
         {NULL, NULL},
 };
 
