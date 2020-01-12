@@ -916,28 +916,36 @@ static int link_info (lua_State *L) {
 
 static int XXHash32File(lua_State* L)
 {
-	long long HashValue = 0;
+	int HashValue = 0;
 
 	const char* FileName = lua_tostring(L, -1);
-	FILE* FileHandle = fopen(FileName, "r");
+	FILE* FileHandle = fopen(FileName, "rb");
 	if (FileHandle)
 	{
 		XXH32_state_t State32;
 		XXH32_reset(&State32, 0);
-		unsigned long ProgressCount = 0;
+		int ProgressCount = 0;
 		
 		fseek(FileHandle, 0, SEEK_END);
-		unsigned long FileSize = ftell(FileHandle);
-		fseek(FileHandle, 0, SEEK_SET);
+		const int FileSize = ftell(FileHandle);
+        fseek(FileHandle, 0, SEEK_SET);
 
-		const unsigned long DefaultBlockSize = 64 * 1024;
+		const int DefaultBlockSize = 64 * 1024;
 		char DataBuffer[64 * 1024] = { 0 };
 		while (ProgressCount < FileSize)
 		{
-			unsigned long BlockSize = (ProgressCount + DefaultBlockSize) <= FileSize ? DefaultBlockSize : (FileSize - ProgressCount);
+			int BlockSize = (ProgressCount + DefaultBlockSize) <= FileSize ? DefaultBlockSize : (FileSize - ProgressCount);
 			fseek(FileHandle, ProgressCount, SEEK_SET);
-			fread(DataBuffer, BlockSize, 1, FileHandle);
-			XXH32_update(&State32, (void*)DataBuffer, BlockSize);
+			int ReadRet = fread(DataBuffer, BlockSize, 1, FileHandle);
+			if(ReadRet == 1)
+			{
+				XXH32_update(&State32, (void*)DataBuffer, BlockSize);
+			}
+			else
+			{
+				printf("%s\n", FileName);
+				printf("XHash32File fread failed, block size: %d, ret code:%d\n", BlockSize, ReadRet);
+			}
 			ProgressCount += BlockSize;
 		}
 		//release file handle
